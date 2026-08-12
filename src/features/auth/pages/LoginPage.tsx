@@ -101,11 +101,6 @@ function LoginForm() {
         <p className="mt-6 text-sm text-ink-muted">
           Esqueceu o PIN? Peça ao administrador para redefinir o acesso.
         </p>
-        <p className="mt-3 text-sm">
-          <Link className="font-medium text-brand-700 hover:underline" to="/setup">
-            Criar primeiro administrador
-          </Link>
-        </p>
       </section>
     </div>
   )

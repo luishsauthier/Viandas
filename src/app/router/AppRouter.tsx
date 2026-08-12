@@ -6,7 +6,6 @@ import { FirstAccessPage } from '@/features/auth/pages/FirstAccessPage'
 import { HomePage } from '@/features/auth/pages/HomePage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { MyAccountPage } from '@/features/auth/pages/MyAccountPage'
-import { SetupAdminPage } from '@/features/auth/pages/SetupAdminPage'
 import { MyHistoryPage } from '@/features/billing/pages/MyHistoryPage'
 import { MyWeekPage } from '@/features/billing/pages/MyWeekPage'
 import { AdminEmployeesPage } from '@/features/employees/pages/AdminEmployeesPage'
@@ -29,7 +28,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/setup" element={<SetupAdminPage />} />
+        <Route path="/setup" element={<Navigate to="/login" replace />} />
         <Route path="/primeiro-acesso/:token" element={<FirstAccessPage />} />
 
         <Route element={<RequireAuth />}>

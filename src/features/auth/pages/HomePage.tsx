@@ -40,12 +40,6 @@ export function HomePage() {
           >
             Entrar
           </Link>
-          <Link
-            to="/setup"
-            className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-brand-50"
-          >
-            Criar primeiro admin
-          </Link>
         </div>
       </section>
     </div>
