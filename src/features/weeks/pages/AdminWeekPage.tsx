@@ -292,16 +292,19 @@ export function AdminWeekPage() {
                 >
                   Fechar
                 </button>
-                {day.status !== 'scheduled' ? (
-                  <button
-                    type="button"
-                    disabled={dayBusyId === day.id}
-                    onClick={() => void setDayStatus(day.id, 'scheduled')}
-                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
-                  >
-                    Horário normal
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  disabled={dayBusyId === day.id || day.status === 'scheduled'}
+                  onClick={() => void setDayStatus(day.id, 'scheduled')}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
+                  title={
+                    day.status === 'scheduled'
+                      ? 'Já está no horário normal'
+                      : 'Voltar ao comportamento automático (agendado)'
+                  }
+                >
+                  Horário normal
+                </button>
               </div>
             </li>
           ))}

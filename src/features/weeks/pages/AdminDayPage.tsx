@@ -324,16 +324,19 @@ export function AdminDayPage() {
           >
             Fechar pedidos
           </button>
-          {day.status !== 'scheduled' ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void setStatus('scheduled')}
-              className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
-            >
-              Horário normal
-            </button>
-          ) : null}
+          <button
+            type="button"
+            disabled={busy || day.status === 'scheduled'}
+            onClick={() => void setStatus('scheduled')}
+            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
+            title={
+              day.status === 'scheduled'
+                ? 'Já está no horário normal'
+                : 'Voltar ao comportamento automático (agendado)'
+            }
+          >
+            Horário normal
+          </button>
           <Link
             to={`/admin/cardapio/${day.week_id}`}
             className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-brand-50"
