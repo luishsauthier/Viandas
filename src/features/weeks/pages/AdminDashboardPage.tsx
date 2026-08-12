@@ -246,7 +246,7 @@ export function AdminDashboardPage() {
         <Card title="Iniciar outra semana">
           <p className="text-sm text-ink-muted">
             Ao iniciar uma nova semana, a atual deixa de ser current e passa para open/closed
-            conforme pendências financeiras (a partir da Fase 6).
+            conforme pendências financeiras.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <label className="block space-y-1.5">

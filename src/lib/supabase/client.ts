@@ -6,8 +6,7 @@ const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey)
 
 /**
- * Cliente Supabase do frontend.
- * Na Fase 0 existe apenas a configuração; auth e schema chegam na Fase 1.
+ * Cliente Supabase do frontend (chave publicável apenas).
  */
 export const supabase: SupabaseClient | null =
   supabaseUrl && supabasePublishableKey ? createClient(supabaseUrl, supabasePublishableKey) : null

@@ -16,17 +16,17 @@ A fonte de verdade funcional e técnica é o arquivo [`PROJECT_SPEC.md`](./PROJE
 - Supabase (Auth, PostgreSQL, Storage, RLS, Edge Functions)
 - Deploy do frontend: **GitHub Pages** (Actions) ou Vercel (SPA estática)
 
-## Status atual
+## Status
 
-**Fase 10 — Polimento concluída.**
+Aplicação pronta para uso: pedidos, cardápio, financeiro, PIX, crédito/débito, histórico e auditoria.
 
-Inclui histórico admin com filtros, auditoria, filtros de funcionários, histórico financeiro no detalhe do funcionário, estados de loading/erro/vazio nas telas principais e preparação de deploy.
+Deploy em GitHub Pages: `https://luishsauthier.github.io/Viandas/`
 
 ### Secrets necessários (Supabase → Edge Functions)
 
-- `OPENAI_API_KEY` (IA do cardápio)
+- `OPENAI_API_KEY` (IA do cardápio, opcional)
 - `OPENAI_VISION_MODEL` (opcional; padrão `gpt-4o-mini`)
-- `APP_BASE_URL` (opcional; fallback para links de convite)
+- `APP_BASE_URL` (URL pública do app, para links de convite)
 
 ## Requisitos locais
 
@@ -62,7 +62,7 @@ Preencha no `.env`:
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Frontend / Actions secret | Chave publicável |
 | `VITE_APP_BASE_URL` | Frontend | URL base para links/convites (no Pages o workflow define) |
 | `VITE_BASE_PATH` | Build (opcional) | Base do Vite; no Pages: `/NomeDoRepo/` |
-| `OPENAI_API_KEY` | Edge Function secret | Extração de cardápio (Fase 9) |
+| `OPENAI_API_KEY` | Edge Function secret | Extração de cardápio (opcional) |
 | `OPENAI_VISION_MODEL` | Edge Function secret | Modelo Vision (opcional) |
 
 Nunca versionar `.env` real. Nunca colocar service role no frontend.
@@ -140,7 +140,7 @@ vercel.json      # SPA rewrite (alternativa Vercel)
 
 ## Migrations
 
-As migrations até a Fase 9 estão em `supabase/migrations/` e devem ser aplicadas no projeto Supabase exclusivo deste app (ex.: `viandas`).
+As migrations estão em `supabase/migrations/` e devem ser aplicadas no projeto Supabase exclusivo deste app (ex.: `viandas`).
 
 ## Deploy (GitHub Pages)
 
@@ -174,7 +174,7 @@ npm run build:pages
 
 A Edge Function `extract-menu` continua no Supabase; não é deployada pelo Pages/Vercel.
 
-## Roadmap
+## Roadmap (implementado)
 
 0. Bootstrap
 1. Banco e autenticação
@@ -186,6 +186,6 @@ A Edge Function `extract-menu` continua no Supabase; não é deployada pelo Page
 7. PIX e comprovantes
 8. Crédito/débito
 9. IA do cardápio
-10. Polimento ← **atual (concluída)**
+10. Polimento
 
 Consulte `PROJECT_SPEC.md` para regras completas.

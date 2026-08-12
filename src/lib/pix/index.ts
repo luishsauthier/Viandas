@@ -1,4 +1,4 @@
 /**
- * Geração de payload PIX — Fase 7.
+ * Geração de payload PIX.
  */
 export {}

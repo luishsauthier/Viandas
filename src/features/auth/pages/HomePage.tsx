@@ -24,14 +24,13 @@ export function HomePage() {
           Pedidos semanais com controle simples
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink-muted">
-          Fase 10 ativa: histórico, filtros, auditoria e polimento de UX.
+          Cardápio, pedidos do dia, cobrança semanal e PIX em um só lugar.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <StatusBadge tone={isSupabaseConfigured ? 'success' : 'warning'}>
-            {isSupabaseConfigured ? 'Supabase configurado' : 'Supabase pendente (.env)'}
-          </StatusBadge>
-          <StatusBadge>Fase 10 — Polimento</StatusBadge>
+          {!isSupabaseConfigured ? (
+            <StatusBadge tone="warning">Configuração pendente</StatusBadge>
+          ) : null}
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">

@@ -234,7 +234,7 @@ export function AdminEmployeeDetailPage() {
       <div className="rounded-2xl border border-border bg-surface-elevated p-5">
         <h2 className="font-semibold text-ink">Acesso</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Telefone não pode ser alterado nesta fase para preservar o identificador de login.
+          Telefone não pode ser alterado para preservar o identificador de login.
         </p>
         <button
           type="button"

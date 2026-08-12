@@ -55,7 +55,7 @@ function MyWeekList() {
       <div>
         <h1 className="text-2xl font-bold text-ink">Minha semana</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Detalhamento de pedidos, ajustes e saldo. Pagamento PIX na próxima fase.
+          Detalhamento de pedidos, ajustes, saldo e pagamento PIX.
         </p>
       </div>
       {weeks.length === 0 ? (

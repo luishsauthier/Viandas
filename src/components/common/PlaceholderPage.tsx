@@ -9,7 +9,7 @@ type PlaceholderPageProps = {
 export function PlaceholderPage({
   title,
   description,
-  phaseHint = 'Disponível em fases posteriores.',
+  phaseHint = 'Em breve.',
 }: PlaceholderPageProps) {
   return (
     <section className="mx-auto w-full max-w-2xl rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm sm:p-8">
