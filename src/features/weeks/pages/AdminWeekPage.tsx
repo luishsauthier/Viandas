@@ -453,3 +453,28 @@ function SummaryCard({
     </div>
   )
 }
+
+function dayStatusLabel(status: WeekDay['status']): string {
+  switch (status) {
+    case 'scheduled':
+      return 'Agendado'
+    case 'open':
+      return 'Aberto'
+    case 'closed':
+      return 'Fechado'
+    case 'reopened':
+      return 'Reaberto'
+  }
+}
+
+function dayStatusTone(status: WeekDay['status']): 'neutral' | 'success' | 'warning' | 'danger' {
+  switch (status) {
+    case 'reopened':
+    case 'open':
+      return 'success'
+    case 'closed':
+      return 'danger'
+    default:
+      return 'neutral'
+  }
+}
