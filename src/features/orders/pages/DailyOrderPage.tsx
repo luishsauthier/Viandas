@@ -167,9 +167,9 @@ export function DailyOrderPage() {
             : 'Hoje'}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm text-ink-muted">
+          <StatusBadge tone={windowOpen ? 'success' : 'danger'}>
             {windowOpen ? `Pedidos abertos até ${closeTime}` : 'Pedidos fechados'}
-          </p>
+          </StatusBadge>
           <StatusBadge
             tone={
               responseStatus === 'ordered'
@@ -182,6 +182,12 @@ export function DailyOrderPage() {
             {orderStatusLabel(responseStatus)}
           </StatusBadge>
         </div>
+        {!windowOpen ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+            A janela de pedidos está fechada. Se precisar alterar, peça ao administrador para
+            reabrir o dia.
+          </p>
+        ) : null}
       </header>
 
       {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-danger">{error}</p> : null}
@@ -290,8 +296,8 @@ export function DailyOrderPage() {
           </div>
 
           {!windowOpen ? (
-            <p className="text-sm text-ink-muted">
-              A janela de pedidos está fechada. Se precisar alterar, fale com o administrador.
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+              Pedidos fechados — alterações só após o administrador reabrir o dia.
             </p>
           ) : null}
         </section>
