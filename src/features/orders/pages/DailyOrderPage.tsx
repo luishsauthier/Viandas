@@ -62,6 +62,13 @@ export function DailyOrderPage() {
           }
           setObservation(order.observation ?? '')
         } else {
+          // Sem pedido confirmado: já vem com o pedido padrão selecionado
+          if (profile?.default_meal_type_id) {
+            const defaultMeal = meals.find((meal) => meal.id === profile.default_meal_type_id)
+            if (defaultMeal) {
+              nextQty[defaultMeal.id] = profile.default_quantity || 1
+            }
+          }
           setObservation('')
         }
         setQuantities(nextQty)
@@ -78,7 +85,8 @@ export function DailyOrderPage() {
 
   useEffect(() => {
     void reload()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.default_meal_type_id, profile?.default_quantity])
 
   const defaultLabel = useMemo(() => {
     if (!profile?.default_meal_type_id) return null
@@ -127,15 +135,6 @@ export function DailyOrderPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  async function confirmDefault() {
-    if (!profile?.default_meal_type_id) return
-    const next: Record<string, number> = {}
-    for (const meal of mealTypes) next[meal.id] = 0
-    next[profile.default_meal_type_id] = profile.default_quantity || 1
-    setQuantities(next)
-    await confirmOrder(next, '')
   }
 
   async function decline() {
@@ -222,16 +221,11 @@ export function DailyOrderPage() {
       {weekDay && profile?.is_participant ? (
         <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-4">
           <h2 className="text-lg font-semibold text-ink">Pedido</h2>
-
-          {defaultLabel && windowOpen ? (
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void confirmDefault()}
-              className="w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-            >
-              Confirmar pedido padrão: {defaultLabel}
-            </button>
+          {defaultLabel && responseStatus !== 'ordered' ? (
+            <p className="text-sm text-ink-muted">
+              Pedido padrão pré-selecionado: <span className="font-medium text-ink">{defaultLabel}</span>
+              . Ajuste se quiser e confirme.
+            </p>
           ) : null}
 
           <div className="space-y-3">
