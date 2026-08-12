@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   ClipboardList,
@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  UserRound,
   Users,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -34,6 +35,7 @@ type AdminLayoutProps = {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-dvh">
@@ -61,6 +63,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </NavLink>
               ))}
             </nav>
+            <button
+              type="button"
+              onClick={() => navigate('/pedido')}
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-brand-50 hover:text-ink"
+              title="Abrir área do funcionário"
+            >
+              <UserRound className="size-4" aria-hidden />
+              Modo funcionário
+            </button>
             <button
               type="button"
               onClick={() => void signOut()}

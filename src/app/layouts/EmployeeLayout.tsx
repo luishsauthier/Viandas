@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { ClipboardList, History, LogOut, UserRound, Wallet } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { ClipboardList, History, LayoutDashboard, LogOut, UserRound, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/features/auth/AuthProvider'
 
@@ -22,7 +22,8 @@ type EmployeeLayoutProps = {
 }
 
 export function EmployeeLayout({ children }: EmployeeLayoutProps) {
-  const { profile, signOut } = useAuth()
+  const { profile, isAdmin, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-dvh">
@@ -45,6 +46,17 @@ export function EmployeeLayout({ children }: EmployeeLayoutProps) {
                 </NavLink>
               ))}
             </nav>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-brand-50 hover:text-ink"
+                title="Voltar ao painel administrativo"
+              >
+                <LayoutDashboard className="size-4" aria-hidden />
+                Modo admin
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void signOut()}

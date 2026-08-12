@@ -298,6 +298,9 @@ export function DailyOrderPage() {
       ) : profile && !profile.is_participant ? (
         <p className="rounded-xl border border-border bg-white p-4 text-sm text-ink-muted">
           Seu perfil não participa dos pedidos.
+          {profile.role === 'admin'
+            ? ' Em Funcionários → seu usuário, marque “Participa dos pedidos”.'
+            : ''}
         </p>
       ) : null}
     </div>
