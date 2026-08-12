@@ -192,3 +192,37 @@ export async function updateMyDefaultOrder(input: {
     .eq('id', userId)
   if (error) throw error
 }
+
+/** Últimos N pedidos confirmados (ordered), do mais recente ao mais antigo. */
+export async function fetchMyRecentOrderedOrders(limit = 3): Promise<OrderWithItems[]> {
+  const client = requireClient()
+  const userId = (await client.auth.getUser()).data.user?.id
+  if (!userId) throw new Error('Não autenticado')
+
+  const { data: orders, error } = await client
+    .from('orders')
+    .select('*')
+    .eq('profile_id', userId)
+    .eq('response_status', 'ordered')
+    .order('updated_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+
+  const list = (orders ?? []) as Order[]
+  if (list.length === 0) return []
+
+  const { data: items, error: itemsError } = await client
+    .from('order_items')
+    .select('*, meal_type:meal_types(id, code, name)')
+    .in(
+      'order_id',
+      list.map((order) => order.id),
+    )
+  if (itemsError) throw itemsError
+
+  const allItems = (items ?? []) as OrderWithItems['items']
+  return list.map((order) => ({
+    ...order,
+    items: allItems.filter((item) => item.order_id === order.id),
+  }))
+}

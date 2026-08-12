@@ -49,3 +49,33 @@ export function orderStatusLabel(
       return 'Não respondeu'
   }
 }
+
+/** Assinatura estável dos itens (ignora observação). */
+export function orderItemsFingerprint(
+  items: Array<{ meal_type_id: string; quantity: number }>,
+): string {
+  return items
+    .filter((item) => item.quantity > 0)
+    .map((item) => `${item.meal_type_id}:${item.quantity}`)
+    .sort()
+    .join('|')
+}
+
+export function isSameOrderItems(
+  a: Array<{ meal_type_id: string; quantity: number }>,
+  b: Array<{ meal_type_id: string; quantity: number }>,
+): boolean {
+  return orderItemsFingerprint(a) === orderItemsFingerprint(b)
+}
+
+/** Pedido padrão atual só guarda 1 tipo + quantidade. */
+export function singleMealDefaultFromItems(
+  items: Array<{ meal_type_id: string; quantity: number }>,
+): { mealTypeId: string; quantity: number } | null {
+  const positive = items.filter((item) => item.quantity > 0)
+  if (positive.length !== 1) return null
+  const only = positive[0]
+  if (!only || only.quantity < 1) return null
+  return { mealTypeId: only.meal_type_id, quantity: only.quantity }
+}
+

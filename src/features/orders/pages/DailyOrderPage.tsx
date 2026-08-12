@@ -6,12 +6,22 @@ import {
   declineDailyOrder,
   fetchActiveMealTypes,
   fetchMyOrderForDay,
+  fetchMyRecentOrderedOrders,
   isOrderWindowOpen,
   submitDailyOrder,
+  updateMyDefaultOrder,
   type OrderWithItems,
 } from '@/features/orders/api'
+import { DefaultOrderPrompt } from '@/features/orders/components/DefaultOrderPrompt'
 import { formatDateBR, weekdayName } from '@/lib/dates'
-import { formatOrderSummary, orderStatusLabel, validateOrderQuantities } from '@/lib/orders/summary'
+import {
+  formatOrderSummary,
+  isSameOrderItems,
+  orderItemsFingerprint,
+  orderStatusLabel,
+  singleMealDefaultFromItems,
+  validateOrderQuantities,
+} from '@/lib/orders/summary'
 import { APP_LIMITS } from '@/lib/constants'
 import { StatusBadge } from '@/components/common/PlaceholderPage'
 import type { MealType, MenuItem, WeekDay } from '@/types'
@@ -31,6 +41,66 @@ export function DailyOrderPage() {
   const [windowOpen, setWindowOpen] = useState(false)
   const [myOrder, setMyOrder] = useState<OrderWithItems | null>(null)
   const [closeTime, setCloseTime] = useState('10:30')
+  const [defaultPrompt, setDefaultPrompt] = useState<{
+    summary: string
+    mealTypeId: string
+    quantity: number
+    fingerprint: string
+  } | null>(null)
+  const [defaultPromptBusy, setDefaultPromptBusy] = useState(false)
+
+  function dismissedKey(fingerprint: string) {
+    return `viandas:default-order-dismissed:${fingerprint}`
+  }
+
+  async function maybeSuggestDefaultOrder() {
+    if (!profile) return
+    try {
+      const recent = await fetchMyRecentOrderedOrders(3)
+      if (recent.length < 3) return
+
+      const itemSets = recent.map((order) =>
+        order.items.map((item) => ({
+          meal_type_id: item.meal_type_id,
+          quantity: item.quantity,
+        })),
+      )
+      const [first, second, third] = itemSets
+      if (!first || !second || !third) return
+      if (!isSameOrderItems(first, second) || !isSameOrderItems(first, third)) return
+
+      const asDefault = singleMealDefaultFromItems(first)
+      if (!asDefault) return
+
+      // Já é o padrão atual
+      if (
+        profile.default_meal_type_id === asDefault.mealTypeId &&
+        (profile.default_quantity || 1) === asDefault.quantity
+      ) {
+        return
+      }
+
+      const fingerprint = orderItemsFingerprint(first)
+      if (localStorage.getItem(dismissedKey(fingerprint)) === '1') return
+
+      const mealFromOrder = recent[0]?.items.find(
+        (item) => item.meal_type_id === asDefault.mealTypeId,
+      )?.meal_type
+      const meal = mealFromOrder ?? mealTypes.find((item) => item.id === asDefault.mealTypeId)
+      const summary = meal
+        ? formatOrderSummary([{ code: meal.code, quantity: asDefault.quantity }])
+        : 'este pedido'
+
+      setDefaultPrompt({
+        summary,
+        mealTypeId: asDefault.mealTypeId,
+        quantity: asDefault.quantity,
+        fingerprint,
+      })
+    } catch {
+      // Silencioso: sugestão não deve quebrar o fluxo do pedido
+    }
+  }
 
   async function reload() {
     setLoading(true)
@@ -130,11 +200,37 @@ export function DailyOrderPage() {
       })
       setSuccess('Pedido confirmado.')
       await reload()
+      await maybeSuggestDefaultOrder()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao confirmar pedido')
     } finally {
       setSaving(false)
     }
+  }
+
+  async function acceptDefaultPrompt() {
+    if (!defaultPrompt) return
+    setDefaultPromptBusy(true)
+    try {
+      await updateMyDefaultOrder({
+        defaultMealTypeId: defaultPrompt.mealTypeId,
+        defaultQuantity: defaultPrompt.quantity,
+      })
+      await refreshProfile()
+      setDefaultPrompt(null)
+      setSuccess('Pedido padrão atualizado.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao salvar pedido padrão')
+    } finally {
+      setDefaultPromptBusy(false)
+    }
+  }
+
+  function dismissDefaultPrompt() {
+    if (defaultPrompt) {
+      localStorage.setItem(dismissedKey(defaultPrompt.fingerprint), '1')
+    }
+    setDefaultPrompt(null)
   }
 
   async function decline() {
@@ -302,6 +398,15 @@ export function DailyOrderPage() {
             ? ' Em Funcionários → seu usuário, marque “Participa dos pedidos”.'
             : ''}
         </p>
+      ) : null}
+
+      {defaultPrompt ? (
+        <DefaultOrderPrompt
+          summary={defaultPrompt.summary}
+          busy={defaultPromptBusy}
+          onAccept={() => void acceptDefaultPrompt()}
+          onDismiss={dismissDefaultPrompt}
+        />
       ) : null}
     </div>
   )
