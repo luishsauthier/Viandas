@@ -4,6 +4,7 @@ import { fetchWeekDays } from '@/features/settings/api'
 import {
   fetchOrdersForWeek,
   fetchParticipantProfiles,
+  adminSetDayStatus,
   type OrderWithItems,
 } from '@/features/orders/api'
 import {
@@ -31,45 +32,71 @@ export function AdminWeekPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
+  const [dayBusyId, setDayBusyId] = useState<string | null>(null)
+
+  async function reloadWeek() {
+    if (!supabase || !weekId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: weekError } = await supabase
+        .from('weeks')
+        .select('*')
+        .eq('id', weekId)
+        .maybeSingle()
+      if (weekError) throw weekError
+      if (!data) {
+        setError('Semana não encontrada')
+        setWeek(null)
+        return
+      }
+      const nextWeek = data as Week
+      const [weekDays, people, weekOrders, weekAccounts] = await Promise.all([
+        fetchWeekDays(weekId),
+        fetchParticipantProfiles(),
+        fetchOrdersForWeek(weekId),
+        fetchWeeklyAccountsForWeek(weekId),
+      ])
+      const orderIds = weekOrders.map((order) => order.id)
+      const weekAdjustments = await fetchAdjustmentsForOrders(orderIds)
+      setWeek(nextWeek)
+      setDays(weekDays)
+      setParticipants(people)
+      setOrders(weekOrders)
+      setAccounts(weekAccounts)
+      setAdjustments(weekAdjustments)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao carregar semana')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    void (async () => {
-      if (!supabase || !weekId) return
-      setLoading(true)
-      try {
-        const { data, error: weekError } = await supabase
-          .from('weeks')
-          .select('*')
-          .eq('id', weekId)
-          .maybeSingle()
-        if (weekError) throw weekError
-        if (!data) {
-          setError('Semana não encontrada')
-          setLoading(false)
-          return
-        }
-        const nextWeek = data as Week
-        const [weekDays, people, weekOrders, weekAccounts] = await Promise.all([
-          fetchWeekDays(weekId),
-          fetchParticipantProfiles(),
-          fetchOrdersForWeek(weekId),
-          fetchWeeklyAccountsForWeek(weekId),
-        ])
-        const orderIds = weekOrders.map((order) => order.id)
-        const weekAdjustments = await fetchAdjustmentsForOrders(orderIds)
-        setWeek(nextWeek)
-        setDays(weekDays)
-        setParticipants(people)
-        setOrders(weekOrders)
-        setAccounts(weekAccounts)
-        setAdjustments(weekAdjustments)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Falha ao carregar semana')
-      } finally {
-        setLoading(false)
-      }
-    })()
+    void reloadWeek()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId])
+
+  async function setDayStatus(dayId: string, status: WeekDay['status']) {
+    setDayBusyId(dayId)
+    setError(null)
+    setCopyFeedback(null)
+    try {
+      await adminSetDayStatus(dayId, status)
+      setDays((prev) => prev.map((day) => (day.id === dayId ? { ...day, status } : day)))
+      setCopyFeedback(
+        status === 'reopened'
+          ? 'Pedidos reabertos para este dia. Funcionários já podem alterar.'
+          : status === 'closed'
+            ? 'Pedidos fechados para este dia.'
+            : 'Status do dia atualizado.',
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao atualizar status do dia')
+    } finally {
+      setDayBusyId(null)
+    }
+  }
 
   const rows = useMemo(() => {
     return participants.map((profile) => {
@@ -210,6 +237,7 @@ export function AdminWeekPage() {
         </div>
       </div>
 
+      {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {copyFeedback ? <p className="text-sm text-brand-800">{copyFeedback}</p> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -217,6 +245,55 @@ export function AdminWeekPage() {
         <SummaryCard label="Valor bruto" value={formatBRL(grossTotal)} />
         <SummaryCard label="Recebido" value={formatBRL(receivedTotal)} />
         <SummaryCard label="Pendente" value={formatBRL(pendingTotal)} />
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold text-ink">Dias da semana</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Para liberar pedidos fora do horário (ou em outro dia), use{' '}
+            <strong>Reabrir pedidos</strong> no dia desejado.
+          </p>
+        </div>
+        <ul className="space-y-2">
+          {days.map((day) => (
+            <li
+              key={day.id}
+              className="flex flex-col gap-3 rounded-xl border border-border bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium text-ink">
+                  {weekdayName(day.weekday)} · {day.date.slice(8)}/{day.date.slice(5, 7)}
+                </p>
+                <StatusBadge tone={dayStatusTone(day.status)}>{dayStatusLabel(day.status)}</StatusBadge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to={`/admin/dia/${day.id}`}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50"
+                >
+                  Abrir dia
+                </Link>
+                <button
+                  type="button"
+                  disabled={dayBusyId === day.id}
+                  onClick={() => void setDayStatus(day.id, 'reopened')}
+                  className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {dayBusyId === day.id ? 'Salvando…' : 'Reabrir pedidos'}
+                </button>
+                <button
+                  type="button"
+                  disabled={dayBusyId === day.id}
+                  onClick={() => void setDayStatus(day.id, 'closed')}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
+                >
+                  Fechar
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <div className="flex flex-wrap gap-2">
@@ -235,9 +312,10 @@ export function AdminWeekPage() {
               <th className="py-2 pr-3 font-medium">Funcionário</th>
               {days.map((day) => (
                 <th key={day.id} className="px-2 py-2 font-medium">
-                  <Link className="hover:underline" to={`/admin/dia/${day.id}`}>
+                  <Link className="font-semibold text-brand-700 hover:underline" to={`/admin/dia/${day.id}`}>
                     {weekdayName(day.weekday, true)}
                   </Link>
+                  <p className="mt-0.5 text-xs font-normal text-ink-muted">{dayStatusLabel(day.status)}</p>
                 </th>
               ))}
               <th className="px-2 py-2 font-medium">Semana</th>
