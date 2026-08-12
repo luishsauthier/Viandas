@@ -89,7 +89,9 @@ export function AdminWeekPage() {
           ? 'Pedidos reabertos para este dia. Funcionários já podem alterar.'
           : status === 'closed'
             ? 'Pedidos fechados para este dia.'
-            : 'Status do dia atualizado.',
+            : status === 'scheduled'
+              ? 'Dia voltou ao horário normal (agendado).'
+              : 'Status do dia atualizado.',
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao atualizar status do dia')
@@ -290,6 +292,16 @@ export function AdminWeekPage() {
                 >
                   Fechar
                 </button>
+                {day.status !== 'scheduled' ? (
+                  <button
+                    type="button"
+                    disabled={dayBusyId === day.id}
+                    onClick={() => void setDayStatus(day.id, 'scheduled')}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50 disabled:opacity-60"
+                  >
+                    Horário normal
+                  </button>
+                ) : null}
               </div>
             </li>
           ))}
