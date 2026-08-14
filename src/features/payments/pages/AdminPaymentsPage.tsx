@@ -126,6 +126,7 @@ export function AdminPaymentsPage() {
 
       {error ? <ErrorBanner>{error}</ErrorBanner> : null}
 
+      {!error ? (
       <section className="space-y-3">
         {pending.length === 0 ? (
           <EmptyState
@@ -203,7 +204,9 @@ export function AdminPaymentsPage() {
           ))
         )}
       </section>
+      ) : null}
 
+      {!error ? (
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-ink">Histórico recente</h2>
         {recent.length === 0 ? (
@@ -281,6 +284,7 @@ export function AdminPaymentsPage() {
           </ul>
         )}
       </section>
+      ) : null}
 
       <Link to="/admin" className="text-sm text-brand-700 hover:underline">
         ← Dashboard

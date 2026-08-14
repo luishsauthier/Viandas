@@ -106,9 +106,22 @@ export function AdminWeekPage() {
         const order = orders.find(
           (item) => item.week_day_id === day.id && item.profile_id === profile.id,
         )
-        if (!order) return { day, label: 'Não respondeu', hasObs: false, amount: 0, order: null as OrderWithItems | null }
+        const extras =
+          order?.response_status === 'ordered'
+            ? adjustments.filter((adj) => adj.order_id === order.id)
+            : []
+        if (!order) {
+          return {
+            day,
+            label: 'Não respondeu',
+            hasObs: false,
+            extras,
+            amount: 0,
+            order: null as OrderWithItems | null,
+          }
+        }
         if (order.response_status === 'declined') {
-          return { day, label: 'Não pediu', hasObs: false, amount: 0, order }
+          return { day, label: 'Não pediu', hasObs: false, extras, amount: 0, order }
         }
         const amount = order.items.reduce(
           (sum, item) => sum + item.quantity * Number(item.unit_price_snapshot),
@@ -123,15 +136,31 @@ export function AdminWeekPage() {
             })),
           ),
           hasObs: Boolean(order.observation),
+          extras,
           amount,
           order,
         }
       })
+      const byCode: Record<string, number> = {}
+      for (const cell of cells) {
+        if (cell.order?.response_status !== 'ordered') continue
+        for (const item of cell.order.items) {
+          const code = item.meal_type?.code ?? '?'
+          byCode[code] = (byCode[code] ?? 0) + item.quantity
+        }
+      }
+      const extrasCount = cells.reduce((sum, cell) => sum + cell.extras.length, 0)
+      const mealsLabel = formatOrderSummary(
+        Object.entries(byCode).map(([code, quantity]) => ({ code, quantity })),
+      )
+      const weekLabel = [mealsLabel, extrasCount ? extrasSuffix(extrasCount) : '']
+        .filter(Boolean)
+        .join(' ') || '—'
       const weekTotal = cells.reduce((sum, cell) => sum + cell.amount, 0)
       const account = accounts.find((item) => item.profile_id === profile.id) ?? null
-      return { profile, cells, weekTotal, account }
+      return { profile, cells, weekTotal, weekLabel, extrasCount, account }
     })
-  }, [participants, days, orders, accounts])
+  }, [participants, days, orders, accounts, adjustments])
 
   const dayTotals = useMemo(() => {
     return days.map((day) => {
@@ -149,7 +178,23 @@ export function AdminWeekPage() {
     })
   }, [days, orders])
 
-  const grossTotal = rows.reduce((sum, row) => sum + row.weekTotal, 0)
+  const grossTotal = accounts.reduce((sum, account) => {
+    return sum + Number(account.charges_total) + Number(account.adjustments_total)
+  }, 0)
+  const weekMealsTotal = formatOrderSummary(
+    Object.values(
+      dayTotals.reduce<Record<string, { code: string; quantity: number }>>((acc, { byCode }) => {
+        for (const [code, quantity] of Object.entries(byCode)) {
+          acc[code] = { code, quantity: (acc[code]?.quantity ?? 0) + quantity }
+        }
+        return acc
+      }, {}),
+    ),
+  )
+  const weekExtrasTotal = rows.reduce((sum, row) => sum + row.extrasCount, 0)
+  const weekMealsLabel =
+    [weekMealsTotal, weekExtrasTotal ? extrasSuffix(weekExtrasTotal) : ''].filter(Boolean).join(' ') ||
+    '—'
   const pendingTotal = accounts.reduce((sum, account) => {
     const balance = Number(account.balance_due)
     return sum + (balance > 0 ? balance : 0)
@@ -352,9 +397,14 @@ export function AdminWeekPage() {
                     <td key={cell.day.id} className="px-2 py-3">
                       <span>{cell.label}</span>
                       {cell.hasObs ? <span className="ml-1 text-brand-600">*</span> : null}
+                      {cell.extras.length > 0 ? (
+                        <span className="ml-1 text-xs text-amber-800">
+                          {extrasSuffix(cell.extras.length)}
+                        </span>
+                      ) : null}
                     </td>
                   ))}
-                  <td className="px-2 py-3 font-medium">{formatBRL(row.weekTotal)}</td>
+                  <td className="px-2 py-3 font-medium">{row.weekLabel}</td>
                   <td className="px-2 py-3">{formatBRL(paid)}</td>
                   <td className="px-2 py-3">{formatBRL(balance)}</td>
                   <td className="px-2 py-3">
@@ -383,7 +433,7 @@ export function AdminWeekPage() {
                     .join(' ') || '—'}
                 </td>
               ))}
-              <td className="px-2 py-3">{formatBRL(grossTotal)}</td>
+              <td className="px-2 py-3">{weekMealsLabel}</td>
               <td className="px-2 py-3">{formatBRL(receivedTotal)}</td>
               <td className="px-2 py-3">{formatBRL(pendingTotal)}</td>
               <td className="px-2 py-3">—</td>
@@ -430,6 +480,7 @@ export function AdminWeekPage() {
                         <span>
                           {cell.label}
                           {cell.hasObs ? ' *' : ''}
+                          {cell.extras.length > 0 ? ` ${extrasSuffix(cell.extras.length)}` : ''}
                         </span>
                       </li>
                     ))}
@@ -449,6 +500,11 @@ export function AdminWeekPage() {
       </section>
     </div>
   )
+}
+
+function extrasSuffix(count: number): string {
+  if (count <= 0) return ''
+  return count === 1 ? '+ extra' : `+ ${count} extras`
 }
 
 function SummaryCard({

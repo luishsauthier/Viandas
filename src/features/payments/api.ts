@@ -31,10 +31,12 @@ export async function fetchPendingPayments(): Promise<PaymentWithProfile[]> {
   const client = requireClient()
   const { data, error } = await client
     .from('payments')
-    .select('*, profile:profiles(id, name, phone), week:weeks!submitted_from_week_id(id, start_date, end_date)')
+    .select(
+      '*, profile:profiles!profile_id(id, name, phone), week:weeks!submitted_from_week_id(id, start_date, end_date)',
+    )
     .eq('status', 'pending')
     .order('submitted_at', { ascending: true })
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return (data ?? []) as PaymentWithProfile[]
 }
 
@@ -42,10 +44,12 @@ export async function fetchRecentPayments(limit = 30): Promise<PaymentWithProfil
   const client = requireClient()
   const { data, error } = await client
     .from('payments')
-    .select('*, profile:profiles(id, name, phone), week:weeks!submitted_from_week_id(id, start_date, end_date)')
+    .select(
+      '*, profile:profiles!profile_id(id, name, phone), week:weeks!submitted_from_week_id(id, start_date, end_date)',
+    )
     .order('submitted_at', { ascending: false })
     .limit(limit)
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return (data ?? []) as PaymentWithProfile[]
 }
 

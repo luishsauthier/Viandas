@@ -1,5 +1,5 @@
 import { Upload } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchAppSettings } from '@/features/settings/api'
 import {
   buildPixQrDataUrl,
@@ -9,7 +9,7 @@ import {
 } from '@/features/payments/api'
 import { buildPixPayload } from '@/lib/pix/payload'
 import { resolvePixDescriptionTemplate } from '@/lib/pix/descriptionTemplate'
-import { formatBRL, parseBRLInput } from '@/lib/currency'
+import { formatBRL } from '@/lib/currency'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { StatusBadge } from '@/components/common/PlaceholderPage'
 import type { Payment } from '@/types'
@@ -30,7 +30,7 @@ export function WeekPaymentPanel({
   onSubmitted,
 }: Props) {
   const { profile } = useAuth()
-  const [amountInput, setAmountInput] = useState(String(balanceDue.toFixed(2)).replace('.', ','))
+  const amount = balanceDue
   const [pixKey, setPixKey] = useState('')
   const [recipient, setRecipient] = useState('')
   const [city, setCity] = useState('')
@@ -63,14 +63,6 @@ export function WeekPaymentPanel({
       }
     })()
   }, [weekId])
-
-  const amount = useMemo(() => {
-    try {
-      return parseBRLInput(amountInput)
-    } catch {
-      return NaN
-    }
-  }, [amountInput])
 
   useEffect(() => {
     void (async () => {
@@ -138,7 +130,7 @@ export function WeekPaymentPanel({
       return
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Informe um valor válido')
+      setError('Não há saldo a pagar nesta semana')
       return
     }
     setBusy(true)
@@ -177,28 +169,9 @@ export function WeekPaymentPanel({
       {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-danger">{error}</p> : null}
       {pixError ? <p className="text-sm text-amber-800">{pixError}</p> : null}
 
-      <label className="block text-sm">
-        <span className="font-medium text-ink">Valor a pagar</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          className="mt-1 w-full max-w-xs rounded-xl border border-border px-3 py-2"
-          value={amountInput}
-          onChange={(event) => setAmountInput(event.target.value)}
-        />
-        <span className="mt-1 block text-xs text-ink-muted">
-          Saldo sugerido: {formatBRL(balanceDue)}. Pode pagar menos ou mais.
-        </span>
-      </label>
-
-      {amount > 0 && amount < balanceDue ? (
-        <p className="text-sm text-amber-800">Pagamento menor deixará saldo pendente.</p>
-      ) : null}
-      {amount > balanceDue ? (
-        <p className="text-sm text-amber-800">
-          Pagamento maior quita a dívida e o excedente vira crédito disponível.
-        </p>
-      ) : null}
+      <p className="text-sm text-ink">
+        <span className="font-medium">Valor a pagar:</span> {formatBRL(amount)}
+      </p>
 
       {qrUrl && payload ? (
         <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start">
