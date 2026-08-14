@@ -6,6 +6,7 @@ import {
   fetchAdjustmentsForOrders,
   fetchMyCreditBalance,
   fetchMyWeeklyAccount,
+  fetchMyWeeklyAccounts,
   fetchWeekById,
   fetchWeeksForEmployee,
   applyMyAvailableCredit,
@@ -31,6 +32,7 @@ export function MyWeekPage() {
 
 function MyWeekList() {
   const [weeks, setWeeks] = useState<Week[]>([])
+  const [accountsByWeek, setAccountsByWeek] = useState<Record<string, WeeklyAccount>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +40,14 @@ function MyWeekList() {
     void (async () => {
       setLoading(true)
       try {
-        setWeeks(await fetchWeeksForEmployee())
+        const [weekRows, accounts] = await Promise.all([
+          fetchWeeksForEmployee(),
+          fetchMyWeeklyAccounts(),
+        ])
+        setWeeks(weekRows)
+        setAccountsByWeek(
+          Object.fromEntries(accounts.map((account) => [account.week_id, account])),
+        )
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Falha ao carregar semanas')
       } finally {
@@ -62,21 +71,38 @@ function MyWeekList() {
         <p className="text-sm text-ink-muted">Nenhuma semana encontrada.</p>
       ) : (
         <ul className="space-y-3">
-          {weeks.map((week) => (
-            <li key={week.id}>
-              <Link
-                to={`/minha-semana/${week.id}`}
-                className="flex items-center justify-between rounded-2xl border border-border bg-surface-elevated px-4 py-3 shadow-sm hover:bg-brand-50"
-              >
-                <span className="font-medium text-ink">
-                  {formatDateRangeBR(week.start_date, week.end_date)}
-                </span>
-                <StatusBadge tone={week.status === 'current' ? 'success' : 'neutral'}>
-                  {week.status === 'current' ? 'Atual' : week.status === 'open' ? 'Aberta' : 'Encerrada'}
-                </StatusBadge>
-              </Link>
-            </li>
-          ))}
+          {weeks.map((week) => {
+            const account = accountsByWeek[week.id]
+            const status = account?.status ?? 'paid'
+            const balance = Number(account?.balance_due ?? 0)
+            return (
+              <li key={week.id}>
+                <Link
+                  to={`/minha-semana/${week.id}`}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3 shadow-sm hover:bg-brand-50"
+                >
+                  <span>
+                    <span className="block font-medium text-ink">
+                      {formatDateRangeBR(week.start_date, week.end_date)}
+                    </span>
+                    {balance > 0 ? (
+                      <span className="mt-0.5 block text-sm text-ink-muted">
+                        Saldo {formatBRL(balance)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex flex-wrap items-center justify-end gap-2">
+                    {week.status === 'current' ? (
+                      <StatusBadge tone="neutral">Atual</StatusBadge>
+                    ) : null}
+                    <StatusBadge tone={financialStatusTone(status)}>
+                      {financialStatusLabel(status)}
+                    </StatusBadge>
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
