@@ -16,6 +16,7 @@ import {
   PIX_DESCRIPTION_VARIABLES,
   previewPixDescriptionTemplate,
 } from '@/lib/pix/descriptionTemplate'
+import { normalizePixKey } from '@/lib/pix/payload'
 import { PhoneInput } from '@/components/ui/MaskedInputs'
 import { maskPhoneBR } from '@/lib/phone'
 import type { AppSettings, MealType } from '@/types'
@@ -112,7 +113,7 @@ export function AdminSettingsPage() {
           restaurant_name: values.restaurant_name.trim(),
           restaurant_phone: values.restaurant_phone.trim() || null,
           restaurant_notes: values.restaurant_notes.trim() || null,
-          pix_key: values.pix_key.trim(),
+          pix_key: normalizePixKey(values.pix_key),
           pix_recipient_name: values.pix_recipient_name.trim(),
           pix_city: values.pix_city.trim(),
           pix_description: values.pix_description.trim() || null,
@@ -232,6 +233,9 @@ export function AdminSettingsPage() {
         <Section title="PIX">
           <Field label="Chave PIX">
             <input className={inputClass} {...register('pix_key')} />
+            <p className="mt-1 text-xs text-ink-muted">
+              CNPJ/CPF só com números. E-mail e chave aleatória podem ficar como estão.
+            </p>
           </Field>
           <Field label="Nome do favorecido">
             <input className={inputClass} {...register('pix_recipient_name')} />

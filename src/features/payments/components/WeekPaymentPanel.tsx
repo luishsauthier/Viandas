@@ -1,3 +1,4 @@
+import { Upload } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { fetchAppSettings } from '@/features/settings/api'
 import {
@@ -38,6 +39,7 @@ export function WeekPaymentPanel({
   const [payload, setPayload] = useState('')
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [fileInputKey, setFileInputKey] = useState(0)
   const [note, setNote] = useState('')
   const [payments, setPayments] = useState<Payment[]>([])
   const [busy, setBusy] = useState(false)
@@ -152,6 +154,7 @@ export function WeekPaymentPanel({
         userNote: note,
       })
       setFile(null)
+      setFileInputKey((value) => value + 1)
       setNote('')
       onSubmitted()
       setPayments(await fetchMyPaymentsForWeek(weekId))
@@ -229,11 +232,22 @@ export function WeekPaymentPanel({
 
       <div className="space-y-3 border-t border-border pt-4">
         <h3 className="font-medium text-ink">Enviar comprovante</h3>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        />
+        <div className="space-y-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm hover:bg-brand-50">
+            <Upload className="size-4 text-brand-700" aria-hidden />
+            {file ? 'Trocar arquivo' : 'Escolher comprovante'}
+            <input
+              key={fileInputKey}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="sr-only"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <p className="text-sm text-ink-muted">
+            {file ? file.name : 'JPG, PNG, WEBP ou PDF'}
+          </p>
+        </div>
         <textarea
           className="min-h-20 w-full rounded-xl border border-border px-3 py-2 text-sm"
           placeholder="Observação (opcional)"

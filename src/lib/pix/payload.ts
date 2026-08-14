@@ -3,6 +3,9 @@
  */
 
 function tlv(id: string, value: string): string {
+  if (value.length > 99) {
+    throw new Error('Campo PIX excede 99 caracteres')
+  }
   const length = String(value.length).padStart(2, '0')
   return `${id}${length}${value}`
 }
@@ -43,6 +46,30 @@ export function formatPixAmount(amount: number): string {
   return amount.toFixed(2)
 }
 
+/**
+ * Normaliza a chave para o formato aceito pelos apps bancários.
+ * CNPJ/CPF vão só com dígitos; e-mail e chave aleatória (EVP) permanecem.
+ */
+export function normalizePixKey(raw: string): string {
+  const key = raw.trim()
+  if (!key) return ''
+  if (key.includes('@')) return key.toLowerCase()
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+    return key.toLowerCase()
+  }
+  if (key.startsWith('+')) {
+    const digits = key.replace(/\D/g, '')
+    return digits ? `+${digits}` : key
+  }
+  const digits = key.replace(/\D/g, '')
+  if (digits.length === 14) return digits
+  if (digits.length === 11 && /^[\d.\-\s]+$/.test(key)) return digits
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+    return `+${digits}`
+  }
+  return key
+}
+
 export type BuildPixPayloadInput = {
   pixKey: string
   recipientName: string
@@ -53,15 +80,20 @@ export type BuildPixPayloadInput = {
   txid?: string | null
 }
 
+function merchantAccountInfo(pixKey: string, description?: string | null): string {
+  const guiAndKey = tlv('00', 'br.gov.bcb.pix') + tlv('01', pixKey)
+  const extra = (description ?? '').trim()
+  if (!extra) return guiAndKey
+  const maxDesc = Math.min(72, 99 - guiAndKey.length - 4)
+  if (maxDesc < 1) return guiAndKey
+  return guiAndKey + tlv('02', sanitizePixText(extra, maxDesc))
+}
+
 export function buildPixPayload(input: BuildPixPayloadInput): string {
-  const key = input.pixKey.trim()
+  const key = normalizePixKey(input.pixKey)
   if (!key) throw new Error('Chave PIX não configurada')
 
-  const merchantAccount = tlv('00', 'br.gov.bcb.pix') + tlv('01', key)
-  const additionalDescription = (input.description ?? '').trim()
-  const merchantAccountWithDesc = additionalDescription
-    ? merchantAccount + tlv('02', sanitizePixText(additionalDescription, 72))
-    : merchantAccount
+  const merchantAccountWithDesc = merchantAccountInfo(key, input.description)
 
   const txid = sanitizePixText(input.txid?.trim() || '***', 25)
   const additionalData = tlv('05', txid)

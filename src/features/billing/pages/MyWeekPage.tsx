@@ -139,13 +139,18 @@ function MyWeekDetail({ weekId }: { weekId: string }) {
       const dayAdjustments = order
         ? adjustments.filter((adj) => adj.order_id === order.id)
         : []
-      const amount =
+      const charges =
         order?.response_status === 'ordered'
           ? order.items.reduce(
               (sum, item) => sum + item.quantity * Number(item.unit_price_snapshot),
               0,
             )
           : 0
+      const adjustmentsTotal = dayAdjustments.reduce(
+        (sum, adj) => sum + Number(adj.amount),
+        0,
+      )
+      const amount = charges + adjustmentsTotal
       return { day, order, amount, dayAdjustments }
     })
   }, [days, orders, adjustments])

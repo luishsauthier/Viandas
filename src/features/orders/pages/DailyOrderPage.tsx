@@ -27,7 +27,7 @@ import { StatusBadge } from '@/components/common/PlaceholderPage'
 import type { MealType, MenuItem, WeekDay } from '@/types'
 
 export function DailyOrderPage() {
-  const { profile, refreshProfile } = useAuth()
+  const { profile, isAdmin, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -170,6 +170,7 @@ export function DailyOrderPage() {
   const responseStatus: 'none' | 'ordered' | 'declined' = !myOrder
     ? 'none'
     : myOrder.response_status
+  const canEdit = Boolean(weekDay) && (windowOpen || isAdmin)
 
   function bump(mealId: string, delta: number) {
     setQuantities((prev) => {
@@ -198,7 +199,7 @@ export function DailyOrderPage() {
         items,
         observation: nextObservation,
       })
-      setSuccess('Pedido confirmado.')
+      setSuccess(responseStatus === 'ordered' ? 'Pedido atualizado.' : 'Pedido confirmado.')
       await reload()
       await maybeSuggestDefaultOrder()
     } catch (err) {
@@ -277,10 +278,15 @@ export function DailyOrderPage() {
             {orderStatusLabel(responseStatus)}
           </StatusBadge>
         </div>
-        {!windowOpen ? (
+        {!windowOpen && !isAdmin ? (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
             A janela de pedidos está fechada. Se precisar alterar, peça ao administrador para
             reabrir o dia.
+          </p>
+        ) : null}
+        {!windowOpen && isAdmin ? (
+          <p className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-900">
+            Janela fechada para funcionários. Como admin, você ainda pode alterar este pedido.
           </p>
         ) : null}
       </header>
@@ -317,6 +323,11 @@ export function DailyOrderPage() {
       {weekDay && profile?.is_participant ? (
         <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-4">
           <h2 className="text-lg font-semibold text-ink">Pedido</h2>
+          {responseStatus === 'ordered' && canEdit ? (
+            <p className="text-sm text-ink-muted">
+              Pedido já confirmado. Ajuste as quantidades ou a observação e salve a alteração.
+            </p>
+          ) : null}
           {defaultLabel && responseStatus !== 'ordered' ? (
             <p className="text-sm text-ink-muted">
               Pedido padrão pré-selecionado: <span className="font-medium text-ink">{defaultLabel}</span>
@@ -331,7 +342,7 @@ export function DailyOrderPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={!windowOpen || saving}
+                    disabled={!canEdit || saving}
                     onClick={() => bump(meal.id, -1)}
                     className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
                   >
@@ -340,7 +351,7 @@ export function DailyOrderPage() {
                   <span className="w-8 text-center font-semibold">{quantities[meal.id] ?? 0}</span>
                   <button
                     type="button"
-                    disabled={!windowOpen || saving}
+                    disabled={!canEdit || saving}
                     onClick={() => bump(meal.id, 1)}
                     className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
                   >
@@ -357,7 +368,7 @@ export function DailyOrderPage() {
               className="min-h-24 w-full rounded-xl border border-border px-3 py-2.5 outline-none ring-brand-500 focus:ring-2 disabled:opacity-50"
               placeholder="Ex.: sem massa, colocar mais salada"
               maxLength={APP_LIMITS.maxObservationLength}
-              disabled={!windowOpen || saving}
+              disabled={!canEdit || saving}
               value={observation}
               onChange={(event) => setObservation(event.target.value)}
             />
@@ -369,15 +380,19 @@ export function DailyOrderPage() {
           <div className="grid gap-2 sm:grid-cols-2">
             <button
               type="button"
-              disabled={!windowOpen || saving}
+              disabled={!canEdit || saving}
               onClick={() => void confirmOrder()}
               className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
             >
-              {saving ? 'Salvando…' : 'Confirmar pedido'}
+              {saving
+                ? 'Salvando…'
+                : responseStatus === 'ordered'
+                  ? 'Salvar alteração'
+                  : 'Confirmar pedido'}
             </button>
             <button
               type="button"
-              disabled={!windowOpen || saving}
+              disabled={!canEdit || saving}
               onClick={() => void decline()}
               className="rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
             >
@@ -385,7 +400,7 @@ export function DailyOrderPage() {
             </button>
           </div>
 
-          {!windowOpen ? (
+          {!canEdit ? (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
               Pedidos fechados — alterações só após o administrador reabrir o dia.
             </p>
