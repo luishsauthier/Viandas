@@ -195,12 +195,16 @@ export function AdminDashboardPage() {
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {weekDays.map((day) => (
-                <div key={day.id} className="rounded-xl border border-border bg-white px-3 py-3">
+                <Link
+                  key={day.id}
+                  to={`/admin/dia/${day.id}`}
+                  className="rounded-xl border border-border bg-white px-3 py-3 hover:border-brand-400 hover:bg-brand-50"
+                >
                   <p className="font-medium text-ink">
                     {weekdayName(day.weekday)} · {day.date.slice(8)}/{day.date.slice(5, 7)}
                   </p>
                   <p className="mt-1 text-sm text-ink-muted capitalize">{statusLabel(day.status)}</p>
-                </div>
+                </Link>
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
