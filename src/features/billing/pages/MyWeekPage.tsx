@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { fetchWeekDays } from '@/features/settings/api'
 import { fetchOrdersForWeek, type OrderWithItems } from '@/features/orders/api'
 import {
@@ -110,6 +111,7 @@ function MyWeekList() {
 }
 
 function MyWeekDetail({ weekId }: { weekId: string }) {
+  const { profile } = useAuth()
   const [week, setWeek] = useState<Week | null>(null)
   const [days, setDays] = useState<WeekDay[]>([])
   const [orders, setOrders] = useState<OrderWithItems[]>([])
@@ -137,7 +139,9 @@ function MyWeekDetail({ weekId }: { weekId: string }) {
           fetchMyWeeklyAccount(weekId),
           fetchMyCreditBalance(),
         ])
-        const myOrders = weekOrders
+        const myOrders = profile?.id
+          ? weekOrders.filter((order) => order.profile_id === profile.id)
+          : weekOrders
         const adjs = await fetchAdjustmentsForOrders(myOrders.map((order) => order.id))
         let nextAccount = existingAccount
         if (!nextAccount) {
@@ -157,7 +161,7 @@ function MyWeekDetail({ weekId }: { weekId: string }) {
         setLoading(false)
       }
     })()
-  }, [weekId, reloadKey])
+  }, [weekId, reloadKey, profile?.id])
 
   const dayRows = useMemo(() => {
     return days.map((day) => {
