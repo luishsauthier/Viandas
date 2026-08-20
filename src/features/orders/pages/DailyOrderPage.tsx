@@ -41,6 +41,7 @@ export function DailyOrderPage() {
   const [windowOpen, setWindowOpen] = useState(false)
   const [myOrder, setMyOrder] = useState<OrderWithItems | null>(null)
   const [closeTime, setCloseTime] = useState('10:30')
+  const [editing, setEditing] = useState(false)
   const [defaultPrompt, setDefaultPrompt] = useState<{
     summary: string
     mealTypeId: string
@@ -124,6 +125,7 @@ export function DailyOrderPage() {
         ])
         setWindowOpen(open)
         setMyOrder(order)
+        setEditing(false)
         const nextQty: Record<string, number> = {}
         for (const meal of meals) nextQty[meal.id] = 0
         if (order?.response_status === 'ordered') {
@@ -145,6 +147,7 @@ export function DailyOrderPage() {
       } else {
         setWindowOpen(false)
         setMyOrder(null)
+        setEditing(false)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar o dia')
@@ -171,6 +174,52 @@ export function DailyOrderPage() {
     ? 'none'
     : myOrder.response_status
   const canEdit = Boolean(weekDay) && (windowOpen || isAdmin)
+  const showConfirmedSummary =
+    (responseStatus === 'ordered' || responseStatus === 'declined') && !editing
+
+  const confirmedSummary = useMemo(() => {
+    if (!myOrder || myOrder.response_status !== 'ordered') return null
+    return formatOrderSummary(
+      myOrder.items.map((item) => ({
+        code: item.meal_type?.code ?? '?',
+        quantity: item.quantity,
+      })),
+    )
+  }, [myOrder])
+
+  function applyOrderToForm(order: OrderWithItems | null) {
+    const nextQty: Record<string, number> = {}
+    for (const meal of mealTypes) nextQty[meal.id] = 0
+    if (order?.response_status === 'ordered') {
+      for (const item of order.items) {
+        nextQty[item.meal_type_id] = item.quantity
+      }
+      setObservation(order.observation ?? '')
+    } else if (profile?.default_meal_type_id) {
+      const defaultMeal = mealTypes.find((meal) => meal.id === profile.default_meal_type_id)
+      if (defaultMeal) {
+        nextQty[defaultMeal.id] = profile.default_quantity || 1
+      }
+      setObservation('')
+    } else {
+      setObservation('')
+    }
+    setQuantities(nextQty)
+  }
+
+  function startEdit() {
+    applyOrderToForm(myOrder)
+    setError(null)
+    setSuccess(null)
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    applyOrderToForm(myOrder)
+    setError(null)
+    setSuccess(null)
+    setEditing(false)
+  }
 
   function bump(mealId: string, delta: number) {
     setQuantities((prev) => {
@@ -321,91 +370,184 @@ export function DailyOrderPage() {
       </section>
 
       {weekDay && profile?.is_participant ? (
-        <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-4">
-          <h2 className="text-lg font-semibold text-ink">Pedido</h2>
-          {responseStatus === 'ordered' && canEdit ? (
-            <p className="text-sm text-ink-muted">
-              Pedido já confirmado. Ajuste as quantidades ou a observação e salve a alteração.
-            </p>
-          ) : null}
-          {defaultLabel && responseStatus !== 'ordered' ? (
-            <p className="text-sm text-ink-muted">
-              Pedido padrão pré-selecionado: <span className="font-medium text-ink">{defaultLabel}</span>
-              . Ajuste se quiser e confirme.
-            </p>
-          ) : null}
+        showConfirmedSummary ? (
+          <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-ink">Seu pedido de hoje</h2>
+              <StatusBadge
+                tone={responseStatus === 'ordered' ? 'success' : 'warning'}
+              >
+                {orderStatusLabel(responseStatus)}
+              </StatusBadge>
+            </div>
 
-          <div className="space-y-3">
-            {mealTypes.map((meal) => (
-              <div key={meal.id} className="flex items-center justify-between gap-3">
-                <span className="font-medium text-ink">{meal.name}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={!canEdit || saving}
-                    onClick={() => bump(meal.id, -1)}
-                    className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center font-semibold">{quantities[meal.id] ?? 0}</span>
-                  <button
-                    type="button"
-                    disabled={!canEdit || saving}
-                    onClick={() => bump(meal.id, 1)}
-                    className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
+            {responseStatus === 'ordered' ? (
+              <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-5 text-center">
+                <p className="text-xs font-medium tracking-wide text-brand-800 uppercase">
+                  Pedido confirmado
+                </p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-ink">
+                  {confirmedSummary || '—'}
+                </p>
+                {myOrder?.observation ? (
+                  <p className="mt-3 text-sm text-ink-muted">
+                    Obs.: <span className="text-ink">{myOrder.observation}</span>
+                  </p>
+                ) : null}
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-5 text-center">
+                <p className="text-lg font-semibold text-amber-950">Não vai pedir hoje</p>
+                <p className="mt-1 text-sm text-amber-900">
+                  Seu registro para este dia está salvo.
+                </p>
+              </div>
+            )}
 
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium text-ink">Observação para o restaurante</span>
-            <textarea
-              className="min-h-24 w-full rounded-xl border border-border px-3 py-2.5 outline-none ring-brand-500 focus:ring-2 disabled:opacity-50"
-              placeholder="Ex.: sem massa, colocar mais salada"
-              maxLength={APP_LIMITS.maxObservationLength}
-              disabled={!canEdit || saving}
-              value={observation}
-              onChange={(event) => setObservation(event.target.value)}
-            />
-            <span className="text-xs text-ink-muted">
-              {observation.length}/{APP_LIMITS.maxObservationLength}
-            </span>
-          </label>
+            {canEdit ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={startEdit}
+                  className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                >
+                  Editar pedido
+                </button>
+                {responseStatus === 'ordered' ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void decline()}
+                    className="rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
+                  >
+                    Não vou pedir hoje
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+                Pedidos fechados — alterações só após o administrador reabrir o dia.
+              </p>
+            )}
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-4">
+            <h2 className="text-lg font-semibold text-ink">
+              {responseStatus === 'ordered' || responseStatus === 'declined'
+                ? 'Editar pedido'
+                : 'Pedido'}
+            </h2>
+            {responseStatus === 'ordered' || responseStatus === 'declined' ? (
+              <p className="text-sm text-ink-muted">
+                Ajuste as quantidades ou a observação e salve. Cancelar descarta as mudanças sem
+                gravar.
+              </p>
+            ) : null}
+            {defaultLabel && responseStatus === 'none' ? (
+              <p className="text-sm text-ink-muted">
+                Pedido padrão pré-selecionado:{' '}
+                <span className="font-medium text-ink">{defaultLabel}</span>. Ajuste se quiser e
+                confirme.
+              </p>
+            ) : null}
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              disabled={!canEdit || saving}
-              onClick={() => void confirmOrder()}
-              className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-            >
-              {saving
-                ? 'Salvando…'
-                : responseStatus === 'ordered'
-                  ? 'Salvar alteração'
-                  : 'Confirmar pedido'}
-            </button>
-            <button
-              type="button"
-              disabled={!canEdit || saving}
-              onClick={() => void decline()}
-              className="rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
-            >
-              Não vou pedir hoje
-            </button>
-          </div>
+            <div className="space-y-3">
+              {mealTypes.map((meal) => (
+                <div key={meal.id} className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-ink">{meal.name}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!canEdit || saving}
+                      onClick={() => bump(meal.id, -1)}
+                      className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center font-semibold">
+                      {quantities[meal.id] ?? 0}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!canEdit || saving}
+                      onClick={() => bump(meal.id, 1)}
+                      className="size-10 rounded-lg border border-border text-lg disabled:opacity-40"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          {!canEdit ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
-              Pedidos fechados — alterações só após o administrador reabrir o dia.
-            </p>
-          ) : null}
-        </section>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-ink">Observação para o restaurante</span>
+              <textarea
+                className="min-h-24 w-full rounded-xl border border-border px-3 py-2.5 outline-none ring-brand-500 focus:ring-2 disabled:opacity-50"
+                placeholder="Ex.: sem massa, colocar mais salada"
+                maxLength={APP_LIMITS.maxObservationLength}
+                disabled={!canEdit || saving}
+                value={observation}
+                onChange={(event) => setObservation(event.target.value)}
+              />
+              <span className="text-xs text-ink-muted">
+                {observation.length}/{APP_LIMITS.maxObservationLength}
+              </span>
+            </label>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={!canEdit || saving}
+                onClick={() => void confirmOrder()}
+                className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+              >
+                {saving
+                  ? 'Salvando…'
+                  : responseStatus === 'ordered' || responseStatus === 'declined'
+                    ? 'Salvar alteração'
+                    : 'Confirmar pedido'}
+              </button>
+              {responseStatus === 'ordered' || responseStatus === 'declined' ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={cancelEdit}
+                  className="rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!canEdit || saving}
+                  onClick={() => void decline()}
+                  className="rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
+                >
+                  Não vou pedir hoje
+                </button>
+              )}
+            </div>
+
+            {(responseStatus === 'ordered' || responseStatus === 'declined') && canEdit ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void decline()}
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold hover:bg-brand-50 disabled:opacity-60"
+              >
+                Não vou pedir hoje
+              </button>
+            ) : null}
+
+            {!canEdit ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+                Pedidos fechados — alterações só após o administrador reabrir o dia.
+              </p>
+            ) : null}
+          </section>
+        )
       ) : profile && !profile.is_participant ? (
         <p className="rounded-xl border border-border bg-white p-4 text-sm text-ink-muted">
           Seu perfil não participa dos pedidos.
