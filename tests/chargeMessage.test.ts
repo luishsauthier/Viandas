@@ -8,6 +8,34 @@ function assertEqual(actual: unknown, expected: unknown, label: string) {
 
 assertEqual(
   buildChargeMessage({
+    employeeName: 'Éverton Lenz',
+    status: 'pending',
+    chargesTotal: 15,
+    adjustmentsTotal: 0,
+    creditApplied: 0,
+    paymentsApplied: 0,
+    balanceDue: 15,
+    days: [
+      { weekday: 5, items: [{ code: 'P', quantity: 1 }], amount: 15 },
+    ],
+    detailUrl:
+      'https://luishsauthier.github.io/Viandas/minha-semana/754aeb19-75c3-4852-b2c2-78bf8d5e9925',
+  }),
+  [
+    'Olá, Éverton Lenz! Segue link para pagamento da semana:',
+    '',
+    'Sexta-feira: 1P — R$ 15,00',
+    '',
+    '*Total*: R$ 15,00',
+    '',
+    'Detalhamento e pagamento:',
+    'https://luishsauthier.github.io/Viandas/minha-semana/754aeb19-75c3-4852-b2c2-78bf8d5e9925',
+  ].join('\n'),
+  'cobrança simples',
+)
+
+assertEqual(
+  buildChargeMessage({
     employeeName: 'Luis Henrique',
     status: 'pending',
     chargesTotal: 63,
@@ -25,14 +53,14 @@ assertEqual(
     detailUrl: 'https://app.example/minha-semana/week-1',
   }),
   [
-    'Luis Henrique — R$ 63,00 — Pendente',
+    'Olá, Luis Henrique! Segue link para pagamento da semana:',
     '',
     'Segunda-feira: 1P — R$ 15,00',
     'Quarta-feira: 1P — R$ 15,00',
     'Quinta-feira: 1P — R$ 15,00',
     'Sexta-feira: 1M — R$ 18,00',
     '',
-    'Total da semana: R$ 63,00',
+    '*Total*: R$ 63,00',
     '',
     'Detalhamento e pagamento:',
     'https://app.example/minha-semana/week-1',
@@ -60,14 +88,13 @@ assertEqual(
     detailUrl: 'https://app.example/minha-semana/w2/',
   }),
   [
-    'Ana — R$ 25,00 — Pendente',
+    'Olá, Ana! Segue link para pagamento da semana:',
     '',
     'Segunda-feira: 2P — R$ 30,00',
-    '  Ajuste (Seg): +R$ 5,00 — Extra',
+    'Ajuste: +R$ 5,00 — Extra',
     '',
-    'Consumo da semana: R$ 35,00',
-    'Crédito anterior aplicado: - R$ 10,00',
-    'Total a pagar: R$ 25,00',
+    'Crédito aplicado: - R$ 10,00',
+    '*Total*: R$ 25,00',
     '',
     'Detalhamento e pagamento:',
     'https://app.example/minha-semana/w2',
