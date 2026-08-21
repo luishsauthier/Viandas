@@ -70,7 +70,7 @@ export function buildRestaurantOrderMessage(orders: RestaurantOrderLineInput[]):
     body.push(...normalLines)
   }
   if (normalLines.length > 0 && specialLines.length > 0) {
-    body.push('', '+', '')
+    body.push('+')
   }
   if (specialLines.length > 0) {
     body.push(...specialLines)
