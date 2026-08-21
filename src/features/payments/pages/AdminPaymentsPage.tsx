@@ -5,6 +5,7 @@ import {
   createReceiptSignedUrl,
   fetchPendingPayments,
   fetchRecentPayments,
+  isWhatsAppReceipt,
   rejectPayment,
   reversePayment,
   type PaymentWithProfile,
@@ -61,6 +62,10 @@ export function AdminPaymentsPage() {
   }, [])
 
   async function openReceipt(path: string) {
+    if (isWhatsAppReceipt(path)) {
+      setError('Este pagamento foi marcado como comprovante enviado pelo WhatsApp — não há arquivo no site.')
+      return
+    }
     try {
       const url = await createReceiptSignedUrl(path)
       window.open(url, '_blank', 'noopener,noreferrer')
@@ -160,17 +165,28 @@ export function AdminPaymentsPage() {
                     <p className="mt-1 text-sm text-ink-muted">Obs.: {payment.user_note}</p>
                   ) : null}
                 </div>
-                <StatusBadge tone="warning">Pendente</StatusBadge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone="warning">Pendente</StatusBadge>
+                  {isWhatsAppReceipt(payment.receipt_path) ? (
+                    <StatusBadge tone="neutral">WhatsApp</StatusBadge>
+                  ) : null}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50"
-                  onClick={() => void openReceipt(payment.receipt_path)}
-                >
-                  Ver comprovante
-                </button>
+                {isWhatsAppReceipt(payment.receipt_path) ? (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    Comprovante enviado pelo WhatsApp — confira no chat e aprove ou rejeite aqui.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    className="rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-brand-50"
+                    onClick={() => void openReceipt(payment.receipt_path)}
+                  >
+                    Ver comprovante
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busyId === payment.id}
@@ -246,13 +262,17 @@ export function AdminPaymentsPage() {
                             ? 'Revertido'
                             : payment.status}
                     </StatusBadge>
-                    <button
-                      type="button"
-                      className="text-brand-700 hover:underline"
-                      onClick={() => void openReceipt(payment.receipt_path)}
-                    >
-                      Comprovante
-                    </button>
+                    {isWhatsAppReceipt(payment.receipt_path) ? (
+                      <StatusBadge tone="neutral">WhatsApp</StatusBadge>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-brand-700 hover:underline"
+                        onClick={() => void openReceipt(payment.receipt_path)}
+                      >
+                        Comprovante
+                      </button>
+                    )}
                   </div>
                 </div>
                 {payment.status === 'approved' ? (

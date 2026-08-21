@@ -112,6 +112,15 @@ export async function submitPayment(input: {
   return data as Payment
 }
 
+/** Marcador de comprovante enviado pelo WhatsApp (sem arquivo no storage). */
+export function whatsappReceiptPath(profileId: string, paymentId: string): string {
+  return `${profileId}/${paymentId}/whatsapp`
+}
+
+export function isWhatsAppReceipt(path: string | null | undefined): boolean {
+  return Boolean(path?.endsWith('/whatsapp'))
+}
+
 export async function approvePayment(paymentId: string): Promise<Payment> {
   const client = requireClient()
   const { data, error } = await client.rpc('approve_payment', { p_payment_id: paymentId })

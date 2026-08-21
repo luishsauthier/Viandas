@@ -4,8 +4,10 @@ import { fetchAppSettings } from '@/features/settings/api'
 import {
   buildPixQrDataUrl,
   fetchMyPaymentsForWeek,
+  isWhatsAppReceipt,
   submitPayment,
   uploadPaymentReceipt,
+  whatsappReceiptPath,
 } from '@/features/payments/api'
 import { buildPixPayload } from '@/lib/pix/payload'
 import { resolvePixDescriptionTemplate } from '@/lib/pix/descriptionTemplate'
@@ -40,6 +42,7 @@ export function WeekPaymentPanel({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
+  const [sentViaWhatsApp, setSentViaWhatsApp] = useState(false)
   const [note, setNote] = useState('')
   const [payments, setPayments] = useState<Payment[]>([])
   const [busy, setBusy] = useState(false)
@@ -125,19 +128,25 @@ export function WeekPaymentPanel({
   }
 
   async function handleSubmit() {
-    if (!file) {
-      setError('Anexe o comprovante')
+    if (!sentViaWhatsApp && !file) {
+      setError('Anexe o comprovante ou marque que enviou pelo WhatsApp')
       return
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       setError('Não há saldo a pagar nesta semana')
       return
     }
+    if (!profile?.id) {
+      setError('Perfil não carregado')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
       const paymentId = crypto.randomUUID()
-      const path = await uploadPaymentReceipt({ paymentId, file })
+      const path = sentViaWhatsApp
+        ? whatsappReceiptPath(profile.id, paymentId)
+        : await uploadPaymentReceipt({ paymentId, file: file! })
       await submitPayment({
         paymentId,
         weekId,
@@ -147,6 +156,7 @@ export function WeekPaymentPanel({
       })
       setFile(null)
       setFileInputKey((value) => value + 1)
+      setSentViaWhatsApp(false)
       setNote('')
       onSubmitted()
       setPayments(await fetchMyPaymentsForWeek(weekId))
@@ -206,7 +216,12 @@ export function WeekPaymentPanel({
       <div className="space-y-3 border-t border-border pt-4">
         <h3 className="font-medium text-ink">Enviar comprovante</h3>
         <div className="space-y-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm hover:bg-brand-50">
+          <label
+            className={[
+              'inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm hover:bg-brand-50',
+              sentViaWhatsApp ? 'opacity-50' : '',
+            ].join(' ')}
+          >
             <Upload className="size-4 text-brand-700" aria-hidden />
             {file ? 'Trocar arquivo' : 'Escolher comprovante'}
             <input
@@ -214,13 +229,44 @@ export function WeekPaymentPanel({
               type="file"
               accept="image/jpeg,image/png,image/webp,application/pdf"
               className="sr-only"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              disabled={sentViaWhatsApp}
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null)
+                if (event.target.files?.[0]) setSentViaWhatsApp(false)
+              }}
             />
           </label>
           <p className="text-sm text-ink-muted">
-            {file ? file.name : 'JPG, PNG, WEBP ou PDF'}
+            {sentViaWhatsApp
+              ? 'Sem arquivo — comprovante pelo WhatsApp'
+              : file
+                ? file.name
+                : 'JPG, PNG, WEBP ou PDF'}
           </p>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-white px-4 py-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 rounded border-border"
+            checked={sentViaWhatsApp}
+            onChange={(event) => {
+              const checked = event.target.checked
+              setSentViaWhatsApp(checked)
+              if (checked) {
+                setFile(null)
+                setFileInputKey((value) => value + 1)
+              }
+            }}
+          />
+          <span>
+            <span className="font-medium text-ink">Enviei o comprovante no WhatsApp</span>
+            <span className="mt-0.5 block text-ink-muted">
+              Vale como envio para o admin revisar no site (sem anexar arquivo aqui).
+            </span>
+          </span>
+        </label>
+
         <textarea
           className="min-h-20 w-full rounded-xl border border-border px-3 py-2 text-sm"
           placeholder="Observação (opcional)"
@@ -229,11 +275,15 @@ export function WeekPaymentPanel({
         />
         <button
           type="button"
-          disabled={busy || !file}
+          disabled={busy || (!file && !sentViaWhatsApp)}
           onClick={() => void handleSubmit()}
           className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
         >
-          {busy ? 'Enviando…' : 'Enviar comprovante'}
+          {busy
+            ? 'Enviando…'
+            : sentViaWhatsApp
+              ? 'Confirmar envio pelo WhatsApp'
+              : 'Enviar comprovante'}
         </button>
       </div>
 
@@ -249,6 +299,7 @@ export function WeekPaymentPanel({
                 <span>
                   {formatBRL(payment.amount)} ·{' '}
                   {new Date(payment.submitted_at).toLocaleString('pt-BR')}
+                  {isWhatsAppReceipt(payment.receipt_path) ? ' · WhatsApp' : ''}
                 </span>
                 <PaymentStatusBadge status={payment.status} />
                 {payment.status === 'rejected' && payment.rejection_reason ? (
