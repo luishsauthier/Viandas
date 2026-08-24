@@ -32,6 +32,7 @@ export function AdminMenuPage() {
   const [loading, setLoading] = useState(true)
   const [catalogBusy, setCatalogBusy] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [savingWeek, setSavingWeek] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [confirmingAll, setConfirmingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,30 +82,6 @@ export function AdminMenuPage() {
     }
   }, [weekId])
 
-  async function reload() {
-    setLoading(true)
-    setError(null)
-    try {
-      const nextWeek = await fetchWeek(weekId)
-      if (!nextWeek) {
-        setError('Semana não encontrada')
-        setWeek(null)
-        setRows([])
-        return
-      }
-      const menus = await fetchMenusForWeek(weekId)
-      setWeek(nextWeek)
-      setRows(menus)
-      setDrafts(
-        Object.fromEntries(menus.map((row) => [row.weekDay.id, row.items.map((item) => item.name)])),
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao carregar cardápio')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   function setDayItems(weekDayId: string, items: string[]) {
     setDrafts((prev) => ({ ...prev, [weekDayId]: items }))
   }
@@ -145,7 +122,25 @@ export function AdminMenuPage() {
       }
       return next
     })
-    setSuccess('Base (Arroz + Feijão) aplicada em todos os dias. Revise e salve cada dia.')
+    setSuccess('Base (Arroz + Feijão) aplicada em todos os dias. Revise e use Salvar cardápio da semana.')
+  }
+
+  function markDaySaved(weekDayId: string, menuDay: MenuDayWithItems['menuDay'], itemNames: string[]) {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.weekDay.id !== weekDayId) return row
+        return {
+          ...row,
+          menuDay,
+          items: itemNames.map((name, index) => ({
+            id: `${menuDay?.id ?? weekDayId}-${index}`,
+            menu_day_id: menuDay?.id ?? weekDayId,
+            name,
+            sort_order: index,
+          })),
+        }
+      }),
+    )
   }
 
   async function saveDay(weekDayId: string) {
@@ -154,18 +149,48 @@ export function AdminMenuPage() {
     setSuccess(null)
     try {
       const items = drafts[weekDayId] ?? []
-      await upsertMenuDay({
+      const saved = await upsertMenuDay({
         weekDayId,
         items,
         rawText: serializeMenuLines(items),
         confirmed: true,
       })
-      setSuccess('Cardápio salvo.')
-      await reload()
+      markDaySaved(weekDayId, saved, items)
+      setSuccess('Cardápio do dia salvo. Os outros dias no rascunho foram mantidos.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao salvar cardápio')
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function saveWeek() {
+    setSavingWeek(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      let savedCount = 0
+      for (const row of rows) {
+        const items = drafts[row.weekDay.id] ?? []
+        if (items.length === 0) continue
+        const saved = await upsertMenuDay({
+          weekDayId: row.weekDay.id,
+          items,
+          rawText: serializeMenuLines(items),
+          confirmed: true,
+        })
+        markDaySaved(row.weekDay.id, saved, items)
+        savedCount += 1
+      }
+      if (savedCount === 0) {
+        setError('Nenhum dia com itens para salvar. Monte o cardápio e tente de novo.')
+        return
+      }
+      setSuccess(`Cardápio da semana salvo (${savedCount} dia${savedCount > 1 ? 's' : ''}).`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao salvar cardápio da semana')
+    } finally {
+      setSavingWeek(false)
     }
   }
 
@@ -219,19 +244,19 @@ export function AdminMenuPage() {
       for (const row of rows) {
         const items = drafts[row.weekDay.id] ?? []
         if (items.length === 0) continue
-        await upsertMenuDay({
+        const saved = await upsertMenuDay({
           weekDayId: row.weekDay.id,
           items,
           rawText: serializeMenuLines(items),
           confirmed: true,
         })
+        markDaySaved(row.weekDay.id, saved, items)
       }
       if (extractionId) {
         await markMenuExtractionApplied(extractionId)
       }
       setSuccess('Cardápio confirmado e salvo.')
       setReviewReady(false)
-      await reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao confirmar cardápio')
     } finally {
@@ -262,13 +287,24 @@ export function AdminMenuPage() {
           Cardápio · {formatDateRangeBR(week.start_date, week.end_date)}
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Monte o dia com a base e os itens cadastrados. Use + para criar carboidrato, proteína ou
-          complemento — fica salvo para as próximas semanas.
+          Monte os dias com a base e os itens cadastrados. Salve um dia por vez ou use Salvar
+          cardápio da semana no final. Ao salvar um dia, os outros rascunhos permanecem.
         </p>
       </div>
 
       {error ? <ErrorBanner>{error}</ErrorBanner> : null}
       {success ? <SuccessBanner>{success}</SuccessBanner> : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={savingWeek || savingId !== null || confirmingAll}
+          onClick={() => void saveWeek()}
+          className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {savingWeek ? 'Salvando semana…' : 'Salvar cardápio da semana'}
+        </button>
+      </div>
 
       <section className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -363,7 +399,7 @@ export function AdminMenuPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  disabled={savingId === weekDay.id}
+                  disabled={savingId === weekDay.id || savingWeek}
                   onClick={() => void saveDay(weekDay.id)}
                   className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
                 >
@@ -379,6 +415,17 @@ export function AdminMenuPage() {
             </section>
           )
         })}
+      </div>
+
+      <div className="sticky bottom-4 z-10 flex justify-end">
+        <button
+          type="button"
+          disabled={savingWeek || savingId !== null || confirmingAll}
+          onClick={() => void saveWeek()}
+          className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-brand-700 disabled:opacity-60"
+        >
+          {savingWeek ? 'Salvando semana…' : 'Salvar cardápio da semana'}
+        </button>
       </div>
     </div>
   )
