@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { InteractiveRobot, RobotAttribution } from '@/components/rive/InteractiveRobot'
 
 export function LoadingState({ label = 'Carregando…' }: { label?: string }) {
   return <p className="text-ink-muted">{label}</p>
@@ -23,9 +24,11 @@ export function EmptyState({
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-surface-elevated/60 px-5 py-8 text-center">
+      <InteractiveRobot className="mb-3" size={112} />
       <p className="font-semibold text-ink">{title}</p>
       {description ? <p className="mt-2 text-sm text-ink-muted">{description}</p> : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
+      <RobotAttribution className="mt-4" />
     </div>
   )
 }

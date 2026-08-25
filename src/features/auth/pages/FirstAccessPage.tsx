@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { RedirectIfAuthenticated } from '@/features/auth/guards'
 import { PinInput } from '@/components/ui/MaskedInputs'
+import { AuthMascot } from '@/components/rive/InteractiveRobot'
 
 const schema = z
   .object({
@@ -58,6 +59,8 @@ function FirstAccessForm() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md items-center px-4 py-10">
       <section className="w-full rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm sm:p-8">
+        <AuthMascot size={160} />
+
         <p className="text-sm font-semibold tracking-wide text-brand-600 uppercase">
           Controle de Viandas
         </p>

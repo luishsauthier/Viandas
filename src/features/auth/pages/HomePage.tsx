@@ -2,12 +2,18 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { StatusBadge } from '@/components/common/PlaceholderPage'
+import { AuthMascot, InteractiveRobot } from '@/components/rive/InteractiveRobot'
 
 export function HomePage() {
   const { loading, isAuthenticated, isAdmin } = useAuth()
 
   if (loading) {
-    return <div className="flex min-h-dvh items-center justify-center text-ink-muted">Carregando…</div>
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-4">
+        <InteractiveRobot size={140} />
+        <p className="text-ink-muted">Carregando…</p>
+      </div>
+    )
   }
 
   if (isAuthenticated) {
@@ -17,6 +23,8 @@ export function HomePage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center px-4 py-10 sm:px-6">
       <section className="rounded-3xl border border-border bg-surface-elevated/95 p-8 shadow-sm sm:p-10">
+        <AuthMascot size={180} />
+
         <p className="text-sm font-semibold tracking-[0.16em] text-brand-600 uppercase">
           Controle de Viandas
         </p>
