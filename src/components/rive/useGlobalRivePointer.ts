@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 
-const POINTER_TYPES: Array<'pointermove' | 'pointerdown' | 'pointerup'> = [
-  'pointermove',
-  'pointerdown',
-  'pointerup',
+const MOUSE_TYPES: Array<'mousemove' | 'mousedown' | 'mouseup'> = [
+  'mousemove',
+  'mousedown',
+  'mouseup',
 ]
 
 function isInsideCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
@@ -16,42 +16,40 @@ function isInsideCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: num
   )
 }
 
-function forwardPointerEvent(canvas: HTMLCanvasElement, event: PointerEvent) {
+function forwardMouseEvent(canvas: HTMLCanvasElement, event: MouseEvent) {
   canvas.dispatchEvent(
-    new PointerEvent(event.type, {
+    new MouseEvent(event.type, {
       clientX: event.clientX,
       clientY: event.clientY,
       bubbles: true,
       cancelable: true,
-      pointerId: event.pointerId,
-      pointerType: event.pointerType,
-      pressure: event.pressure,
       buttons: event.buttons,
       button: event.button,
+      view: window,
     }),
   )
 }
 
 /**
- * Forwards pointer events from anywhere on the viewport to the Rive canvas.
- * Built-in listeners only attach to the canvas; this extends tracking to the full screen.
+ * Forwards mouse events from anywhere on the viewport to the Rive canvas.
+ * Rive's runtime listens on mousemove/mousedown/mouseup (not pointer events).
  */
 export function useGlobalRivePointer(canvas: HTMLCanvasElement | null) {
   useEffect(() => {
     if (!canvas) return
 
-    const onPointer = (event: PointerEvent) => {
+    const onMouse = (event: MouseEvent) => {
       if (isInsideCanvas(canvas, event.clientX, event.clientY)) return
-      forwardPointerEvent(canvas, event)
+      forwardMouseEvent(canvas, event)
     }
 
-    for (const type of POINTER_TYPES) {
-      window.addEventListener(type, onPointer)
+    for (const type of MOUSE_TYPES) {
+      window.addEventListener(type, onMouse, { passive: true })
     }
 
     return () => {
-      for (const type of POINTER_TYPES) {
-        window.removeEventListener(type, onPointer)
+      for (const type of MOUSE_TYPES) {
+        window.removeEventListener(type, onMouse)
       }
     }
   }, [canvas])
