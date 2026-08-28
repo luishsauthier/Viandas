@@ -1,4 +1,5 @@
 import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas'
+import { useGlobalRivePointer } from '@/components/rive/useGlobalRivePointer'
 
 const ROBOT_SRC = `${import.meta.env.BASE_URL}rive/cute-interactive-robot.riv`
 const ARTBOARD = 'Main'
@@ -14,11 +15,11 @@ type InteractiveRobotProps = {
  * Cute Interactive Robot by telegivcom (CC BY 4.0).
  * https://rive.app/marketplace/5308-11093-cute-interactive-robot/
  *
- * Cursor tracking is driven by Rive Listeners inside the .riv file —
- * pointer events on the canvas are enough; no manual inputs required.
+ * Cursor tracking uses Rive Listeners in the .riv file. Pointer events on the
+ * canvas drive the animation; useGlobalRivePointer extends that to the full viewport.
  */
 export function InteractiveRobot({ className = '', size = 180 }: InteractiveRobotProps) {
-  const { RiveComponent } = useRive({
+  const { RiveComponent, canvas } = useRive({
     src: ROBOT_SRC,
     artboard: ARTBOARD,
     stateMachines: STATE_MACHINE,
@@ -29,9 +30,11 @@ export function InteractiveRobot({ className = '', size = 180 }: InteractiveRobo
     }),
   })
 
+  useGlobalRivePointer(canvas)
+
   return (
     <div
-      className={`mx-auto overflow-hidden rounded-2xl bg-[#2a2e32] touch-none select-none ${className}`}
+      className={`mx-auto overflow-hidden rounded-2xl bg-[#2a2e32] select-none ${className}`}
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
